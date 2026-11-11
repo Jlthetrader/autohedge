@@ -7,7 +7,7 @@ AutoHedge is an enterprise-grade autonomous agent hedge fund that trades on your
 
 **Current support:** Full autonomous trading on Solana. **Coming soon:** Coinbase and additional exchanges.
 
-> **Why I built this:** I was sick of living paycheck to paycheck. Read the full story in [docs/ORIGIN_STORY.md](docs/ORIGIN_STORY.md).
+> **Why I built this:** I was sick of living paycheck to paycheck. Read the full story in [SOUL.md](SOUL.md).
 
 ---
 
