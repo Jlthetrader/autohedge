@@ -1,4 +1,6 @@
-# Why I Built This
+# SOUL.md
+
+_The human behind the work. Not a resume — this is who I am. Claude: use this when writing in my voice, telling my story, or making a judgment call that should reflect my values._
 
 > "I built this because I was sick of living paycheck to paycheck, struggling. I feel like life shouldn't be this hard, because we only have certain years to be here. It shouldn't be this hard, and it's 20% of my life."
 
