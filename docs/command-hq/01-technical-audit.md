@@ -369,3 +369,107 @@ Pick one:
   and any token or key files are in `.gitignore`.** The Discord bot token must never be committed.
 * **B. Run Claude Code on the laptop.** Open the folder in the Claude desktop app, or run
   `claude remote-control` in that folder, and continue the work from there.
+
+---
+
+## 9. Audit of the real Command HQ (laptop folder, partial)
+
+**Files reviewed:** `app.py`, `README.md`, `.env.example`, `discord_bot.py`, `start.bat`.
+**Not yet seen:** `agents/`, `services/`, `ui/` (including `hq_component/`), `launcher/`, `tests/`,
+`requirements.txt`. Statements about those come from the README and are marked *(per README)*.
+
+### 9.1 What Command HQ is today
+
+| Layer | Implementation |
+|---|---|
+| Platform | Windows laptop; `start.bat` creates a venv and runs `launcher/hq_launcher.py`, which starts **Streamlit** (`app.py`, :8501) **and** `discord_bot.py` |
+| Language | Python 3.10+ |
+| Storage | JSON files in `data/` (`tasks.json`, `runs.json`, approvals, settings, KBs) through `services.storage.Store` with file locking *(per README)* |
+| AI | **Anthropic only** (`ANTHROPIC_API_KEY`, `claude-sonnet-5-5`, 1,500 max tokens). No OpenAI integration |
+| Orchestration | `agents/commander.py`: JARVIS plans, then runs specialists **sequentially in-process**, then combines. Background "missions" are recorded in `runs.json`; interrupted runs are marked failed on the next start |
+| Agents (current) | **5**: JARVIS, IRON MAN, SHURI (trading), MILES MORALES, ULTRON (ChatLLM dispatch via a Google Drive "HQ Bridge"). The README still says "exactly four" in the header |
+| Memory | Obsidian vault (`Command HQ/` folder, `Shared Memory.md`, per-agent notes) plus keyword search *(per README)* |
+| Visual HQ | `ui/hq_component/`: canvas pixel-art HQ, original sprites (4 directions, idle/walk/work), **A\* pathfinding**, movement driven by real tasks, clickable agents, pan/zoom, reduced-motion support *(per README)* |
+| Discord | `discord_bot.py`: **text** commands, allowlisted user IDs, 8 cmd/min rate limit, command log, PID single-instance lock, heartbeat file, approvals via `approve <id>`/`deny <id>`, 6 AM briefing, result watcher |
+| Muse link | `services/muse_link.py`: **Shuri-on-Muse runs as her own Discord bot.** HQ accepts read-only commands and notes from IDs in `DISCORD_PEER_BOT_IDS`; never approvals or trades |
+| Approvals | `services/approvals.py`: risk tiers; publishing/deploy/external/purchase/delete/security wait for the owner; approval is bound to exact task text; trades refused outright |
+| Notifications | ntfy / Telegram / Pushover |
+| Tests | `tests/test_v3.py` (logic, approvals, Discord, end-to-end with fake AI), `tests/ui_smoke.py`, `tests/test_crt_watch.py` |
+| Business modules | Cleaning Co (website lead import → jobs, Gmail drafts), Revenue & P&L, Projects & Tasks, Alert History |
+
+**Overall:** this is a far more mature base than the directive assumed. Many of its "build"
+items already exist in some form: honest event-driven movement, approvals, an owner-only
+Discord bot, background missions, a fake-AI test harness, and a memory store.
+
+### 9.2 Answers this resolves
+
+* **"Muse" is not an API.** Shuri lives on Muse and talks to Command HQ through **Muse's own
+  Discord bot**. Her provider adapter is therefore a **Discord peer channel**, not an HTTP SDK:
+  JARVIS posts a structured assignment, Muse-Shuri replies, and the HQ parses the reply by task ID.
+  Because her replies are asynchronous, her tasks get a longer timeout and a "waiting on Muse" status.
+* **Why "online" was posted 6 times:** in `discord_bot.py` `on_ready()` (line 211) sends the
+  "🟢 online" DM **before** the `loops_started` guard. Discord fires `on_ready` again after every
+  gateway reconnect (Wi-Fi blip, laptop sleep/wake), so each reconnect re-announces. The loops are
+  guarded but the DM is not. **Fix:** send the DM only on the first `on_ready` of a process, or
+  only if the last heartbeat is older than ~10 minutes. This is a one-line, low-risk change.
+
+### 9.3 Mapping to the directive
+
+| Directive item | Existing asset | Action |
+|---|---|---|
+| Exactly 3 agents | 5 agents in `agents/registry.py` | **Reduce to 3.** Retire IRON MAN, MILES MORALES, ULTRON (data kept and archived, not deleted). Add **BLACKWIDOWIMAGES** (OpenAI). Re-role SHURI to personal assistant on Muse |
+| Jarvis = Claude, leads, builds | `commander.py` (Claude) | **Keep and extend**: Jarvis takes over Iron Man's build/automation duties |
+| BlackWidowImages = ChatGPT, strategy + creative + reviews | Nothing (Ultron's creative dispatch is closest) | **New** OpenAI Responses API adapter; Ultron's build-brief/outbox flow is folded into her creative studio |
+| Shuri = Muse, personal ops, no trading | Shuri = trading analyst | **Re-role** to schedule/reminders/briefings/follow-ups. Move the 6 AM briefing to her. Extend `muse_link` from read-only to "receive assignment → return result" (still no approvals) |
+| No trading | Trading Desk, ICC, chart_watch, **crt_watch (polls every 5 s)**, SMT, market data, news monitor, `hawkeye/thor/captain/hulk`, trading P&L | **Remove from the running system**: unregister the pages, bot loops and commands. Code moves to `archive/trading/` on a branch so nothing is lost; data stays in `data/` |
+| Factory world + conveyors | `hq_component` canvas, A\*, honest movement, rooms | **Reuse the engine; redesign the map** into the 9 factory zones. Add conveyor belts bound to task-status changes. Replace Iron Man/Miles sprites with BlackWidowImages; redesign Jarvis as a walking synthetic body (today he's a hologram) and Shuri per the directive |
+| Task lifecycle | Received → Reviewing → Awaiting approval → Running → Completed/Failed/Cancelled | **Extend**: add Routing, In review, Revision states, and record every transition as an event (needed for belts + replay) |
+| Two-way OpenAI ↔ Claude | None | **New**: orchestrator round-trips with hop/revision/time/budget guards (§3.6) |
+| Shared memory | Obsidian vault | **Keep Obsidian as the human-editable store**; add an index with categories, provenance, status (proposed/approved), and per-agent visibility on top |
+| Discord commands | Text commands, allowlist, approvals | **Keep text commands; add slash commands** `/ask-jarvis /ask-blackwidow /ask-shuri /collaborate /assign /status /memory /review /approve` that call the same `services.remote` handlers |
+| Dashboard/status | Sidebar team status, Task History, alerts | **Reuse**, then move into the factory HUD |
+| Approvals/security/audit | `approvals.py`, command log, allowlist, keys in `.env` | **Keep as is**; add per-agent tool permissions and a $100/month spend meter |
+| Phone app | Streamlit on localhost:8501 | See 9.4 |
+
+### 9.4 Architecture decision: Streamlit stays, a real-time API is added beside it
+
+Streamlit re-runs the whole script on each interaction and has no server-push channel, so on its
+own it can't drive conveyor belts from live events or work well as an installable phone app.
+The plan, which adds pieces and removes nothing:
+
+1. Keep `agents/` + `services/` as the **single backend core**; the Streamlit pages keep working.
+2. Add a small **FastAPI service** (`api/`) in the same folder, using the same `Store`,
+   `approvals`, `missions`, and `remote` modules. It exposes REST + **`/ws/events`** (an event
+   log appended on every task, agent, and approval change, so the phone can resume after a disconnect).
+3. Lift `ui/hq_component/` (already plain HTML/JS, no build step) into a standalone **PWA**
+   served by FastAPI. Streamlit keeps embedding it, and the phone opens the same page full screen.
+4. Phone access: free private tunnel (Tailscale) to the laptop; cloud hosting later only with approval.
+5. Storage: JSON stays for now. Moving to SQLite happens only if the event volume needs it,
+   as a separate approved step with a migration and a backup.
+
+### 9.5 Other findings
+
+* `.env.example` is missing `DISCORD_BOT_TOKEN`, `DISCORD_ALLOWED_USER_IDS`, `DISCORD_CHANNEL_ID`,
+  `OBSIDIAN_VAULT_PATH`, and (new) `OPENAI_API_KEY`, `OPENAI_MODEL`.
+* The bot's `background()` loop calls `build_context()` every 30 s for cleaning leads. That's fine
+  functionally, but it reloads everything each time; this will be cached when the trading loops are removed.
+* `watch()` polls for results for up to 20 min per task; the event log will replace this polling.
+* Character names: Iron Man, Miles Morales, and Ultron are well-known third-party characters; they
+  go away with the reduction to 3. Jarvis, Shuri, and BlackWidowImages keep their names at Justin's
+  direction, with **fully original visual designs** (no film or comic likenesses).
+
+### 9.6 Revised roadmap
+
+| Step | Work | Touches paid APIs? |
+|---|---|---|
+| 0 | Get the full folder into a private GitHub repo (with `.env` and `data/` git-ignored) so the rest can be audited and changes are versioned with rollback | No |
+| 1 | Fix the duplicate "online" DM; complete `.env.example` | No |
+| 2 | Retire trading: unregister pages/loops/commands, archive the code, keep the data | No |
+| 3 | Agent registry → exactly 3; archive Iron Man/Miles/Ultron; migrate their open tasks to Jarvis; tests updated | No |
+| 4 | Event log + task states + FastAPI `/ws/events` (fake AI in tests) | No |
+| 5 | Factory map redesign + conveyor belts + new sprites, driven only by events; PWA shell | No |
+| 6 | OpenAI adapter for BlackWidowImages; spend meter with the $100/month cap | **Yes** (needs `OPENAI_API_KEY` in `.env`) |
+| 7 | Jarvis ↔ BlackWidowImages collaboration/review loop with guards | Yes |
+| 8 | Shuri re-role + Muse link upgraded to two-way assignments | Muse side only |
+| 9 | Discord slash commands | No |
+| 10 | Phone: Tailscale + "Add to Home Screen"; deployment/rollback runbook | No (cloud host later needs approval) |
