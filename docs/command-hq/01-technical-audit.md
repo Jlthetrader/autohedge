@@ -473,3 +473,53 @@ The plan, which adds pieces and removes nothing:
 | 8 | Shuri re-role + Muse link upgraded to two-way assignments | Muse side only |
 | 9 | Discord slash commands | No |
 | 10 | Phone: Tailscale + "Add to Home Screen"; deployment/rollback runbook | No (cloud host later needs approval) |
+
+---
+
+## 10. Second upload: backup zip, `requirements.txt`, `.env`
+
+### 10.1 ⚠️ Security incident: live credentials were shared in chat
+
+The uploaded `.env` contained a **live Discord bot token** and an **Anthropic key**. Both are
+now outside the laptop and must be treated as compromised. Neither value is in this repository
+or this document.
+
+**Required actions (owner):**
+1. Discord Developer Portal → JarvisHQ app → **Bot → Reset Token**. Put the new token in the
+   laptop's `.env` only.
+2. Anthropic Console → **API Keys** → delete or disable the exposed key; create a new one.
+3. Restart Command HQ with `start.bat`.
+
+**Possible cause of "AI core OFFLINE":** the stored Anthropic value doesn't have the
+`sk-ant-api03-` prefix that Command HQ's own README says an API key must have. It looks like a
+different kind of credential. When you create the replacement, make sure it's an **API key**
+from console.anthropic.com → API Keys.
+
+Going forward: share `.env.example` (blank values) only, never `.env`.
+
+### 10.2 Dependencies (current `requirements.txt`)
+
+`streamlit, pandas, plotly, python-dotenv, requests, anthropic, tzdata, discord.py`
+
+Planned additions, each only in the phase that needs it: `fastapi`, `uvicorn` (live API + phone app),
+`openai` (BlackWidowImages). No database server is needed.
+
+### 10.3 Backup zip `backup-before-v3-update.zip`
+
+19 files dated 2026-11-01, from **before** the v3/v4/v5 upgrades, so `approvals.py`, `remote.py`,
+`muse_link.py`, `tasks.py`, `briefing.py`, `obsidian.py`, the LLM client, and `tests/` aren't in it.
+What it confirms:
+
+| File | Finding | Reuse |
+|---|---|---|
+| `services/storage.py` | JSON collections with a process lock, atomic temp-file writes, corrupt-file quarantine, default merging | **Keep.** Solid. Add an append-only `events` collection |
+| `agents/commander.py` | `handle()` already calls `emit(kind, data)` at planning / planned / step_start / step_done / synthesizing / done | **The hook the conveyor belts need.** Persist each emit as an event and broadcast it |
+| `services/missions.py` | Background threads, `reconcile()` marks interrupted runs failed, retry/dismiss, `busy_agents()` | **Keep.** Add hop/time/budget guards here |
+| `agents/registry.py` | Single source of truth for agents (`AgentSpec`); shared house rules in prompts | **Edit** to the 3-agent roster |
+| `ui/hq_component/hq.js` | 1,352-line canvas engine: 16 px tiles on a 76×45 grid, rooms, collision, **A\***, procedural outlined sprites, doors, delegation beams, HUD, pan/zoom, reduced motion. State arrives from Python on each Streamlit rerun | **Keep the engine**: swap the Streamlit bridge for a WebSocket client, redraw the map as the factory, add belts and new sprites |
+| `launcher/hq_launcher.py` | 589 lines: installs deps, starts Streamlit and the bot | **Extend** to start the API service too |
+
+### 10.4 Still needed
+
+The **current** (v5) `agents/`, `services/`, `ui/`, `launcher/`, and `tests/` folders. The quickest
+way is a private GitHub repo with `.env`, `data/`, `logs/`, and `.venv/` in `.gitignore`.
