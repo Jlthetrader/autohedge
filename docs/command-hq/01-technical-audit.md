@@ -316,3 +316,56 @@ later. Phases 2–3 can run in parallel once the event contract is fixed.
 | This audit + roadmap | ✅ Done |
 | Any code changes, deletions, deploys, or paid-service activation | ❌ None made |
 | Everything in §3–§5 | 📝 Proposed, awaiting your go-ahead and the answers in §6 |
+
+---
+
+## 8. Addendum: answers received (2026-11-12)
+
+| Question | Answer | Effect on the plan |
+|---|---|---|
+| Where is Command HQ? | A folder on Justin's laptop (not on GitHub) | **The audit of the real code is blocked until it's reachable.** See "How to give Jarvis access" below |
+| Reference screenshot | Received: `reference/factory-style-reference.png` | Style reference only: a pixel-art station seen from above at a 3/4 angle, cool steel floors, cyan/green accent lighting, a red central core, small walking characters. The image is a third-party game screenshot, so **all of our art will be original**. We'll match the mood, not copy assets or layout |
+| Trading | **No trading code** | Command HQ gets no trading tools. Shuri's current "chart check" (MNQ candles via `HQCandleExport`) gets **retired**, not migrated. AutoHedge code isn't imported anywhere |
+| AI budget | **$100 / month** | Hard caps: ~$3.25/day, $1.00/task by default, warning at 80%, automatic pause at 100%. Metered per provider from real usage numbers |
+| Hosting | **On his phone as an app, eventually** | See "Phone app plan" below |
+
+### What the screenshots show about the existing system
+
+* **The Discord bot "JarvisHQ" already exists** (app created Nov 1, 2026) and runs **on the laptop**.
+* It uses **text commands** (`help`), not slash commands yet.
+* It posted "Command HQ is online on your laptop" **6 times on Nov 11** (10:56, 11:17, 11:28,
+  13:54, 14:22, 15:00). That means the process restarts often (crashes, sleep/wake, or manual
+  restarts) and announces every boot. To fix: find the cause, and announce only when it's
+  been offline for more than N minutes.
+* **Shuri already exists as a scheduled job** ("chart check 10:30 CT") that reads a
+  `MNQ_1d.csv` export and expects 4H/1H screenshots. This is the trading duty the directive
+  says to remove.
+* So the laptop code has at least: a Discord bot, a scheduler, a Shuri persona, and file-based
+  data input. Exactly how these work will be confirmed once the folder is readable.
+
+### Phone app plan
+
+An iPhone can't keep a server running in the background, so "on my phone" means **the app
+runs on the phone and the brain runs somewhere always-on**:
+
+1. **Now (free):** The backend runs on the laptop. The factory is a **Progressive Web App**:
+   open the URL in Safari, choose "Add to Home Screen", and it opens full screen like an app.
+   The phone reaches the laptop through a free private tunnel (Tailscale, or a Cloudflare
+   Tunnel). Only Justin's devices can connect.
+2. **Later (needs approval, ~$5–7/mo):** Move the backend to a small cloud host so it works
+   when the laptop is off.
+3. **Optional (needs approval, $99/yr Apple Developer):** Wrap the same web app with Capacitor
+   for a real App Store/TestFlight app with push notifications.
+
+The factory UI is therefore designed **mobile-first** (portrait layout, touch to inspect agents,
+pinch/drag the map).
+
+### How to give Jarvis access to the laptop folder
+
+Pick one:
+
+* **A. Push it to GitHub (simplest).** Put the folder in a private repo (the empty
+  `HandsoffBundle` repo works, or a new `command-hq` repo). **Before pushing, make sure `.env`
+  and any token or key files are in `.gitignore`.** The Discord bot token must never be committed.
+* **B. Run Claude Code on the laptop.** Open the folder in the Claude desktop app, or run
+  `claude remote-control` in that folder, and continue the work from there.
