@@ -1,0 +1,19 @@
+name = "justin-hq"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# The web address your app is served from (add more separated by commas).
+ALLOWED_ORIGINS = "https://jlthetrader.github.io"
+# Models. Change these if a provider renames a model.
+CLAUDE_MODEL = "claude-opus-5-5"
+OPENAI_MODEL = "gpt-5"
+MUSE_MODEL = "muse-spark-1.1"
+MUSE_BASE_URL = "https://api.meta.ai/v1"
+
+# Secrets are NOT stored in this file. Add them with:
+#   npx wrangler secret put APP_PASSWORD
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put OPENAI_API_KEY
+#   npx wrangler secret put MUSE_API_KEY

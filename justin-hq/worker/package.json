@@ -1,0 +1,16 @@
+{
+  "name": "justin-hq-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "openai": "^7.57.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.162.0"
+  }
+}
